@@ -1,0 +1,6 @@
+[package]
+name = "sifr-md"
+version = "0.1.0"
+edition = "2021"
+description = "Zero-dependency Markdown-to-ANSI terminal renderer"
+license = "MIT"
