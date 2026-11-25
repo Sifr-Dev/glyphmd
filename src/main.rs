@@ -4,6 +4,7 @@
 //! Reads Markdown (CommonMark-ish subset) and writes styled bytes to stdout:
 //!   headings (#..####), **bold**, *italic*, `code`, ``` fences, - lists,
 //!   1. ordered lists, > blockquote, --- hr, [text](url), ~~strike~~
+//!
 //! No colors beyond SIFR: void/surface/dim shades + one accent (accent blue).
 use std::fs;
 use std::io::{self, Read, Write};
@@ -25,7 +26,6 @@ enum Block {
     List(Vec<(usize, String)>), // (depth, item)
     Quote(String),
     Hr,
-    Blank,
 }
 
 fn flush_para(buf: &mut String, out: &mut Vec<Block>) {
@@ -76,7 +76,8 @@ fn parse_blocks(text: &str) -> Vec<Block> {
             } else {
                 // a different block kind ends the list — but NOT another list item
                 let tl = line.trim();
-                let is_item = tl.starts_with("- ") || tl.starts_with("* ") || split_ordered(tl).is_some();
+                let is_item =
+                    tl.starts_with("- ") || tl.starts_with("* ") || split_ordered(tl).is_some();
                 if !is_item {
                     out.push(Block::List(std::mem::take(&mut list)));
                 }
@@ -91,10 +92,22 @@ fn parse_blocks(text: &str) -> Vec<Block> {
             continue;
         }
         // headings
-        if let Some(rest) = t.strip_prefix("# ") { out.push(Block::H(1, rest.to_string())); continue; }
-        if let Some(rest) = t.strip_prefix("## ") { out.push(Block::H(2, rest.to_string())); continue; }
-        if let Some(rest) = t.strip_prefix("### ") { out.push(Block::H(3, rest.to_string())); continue; }
-        if let Some(rest) = t.strip_prefix("#### ") { out.push(Block::H(4, rest.to_string())); continue; }
+        if let Some(rest) = t.strip_prefix("# ") {
+            out.push(Block::H(1, rest.to_string()));
+            continue;
+        }
+        if let Some(rest) = t.strip_prefix("## ") {
+            out.push(Block::H(2, rest.to_string()));
+            continue;
+        }
+        if let Some(rest) = t.strip_prefix("### ") {
+            out.push(Block::H(3, rest.to_string()));
+            continue;
+        }
+        if let Some(rest) = t.strip_prefix("#### ") {
+            out.push(Block::H(4, rest.to_string()));
+            continue;
+        }
         // hr
         if t == "---" || t == "***" || t == "___" {
             flush_para(&mut para, &mut out);
@@ -233,7 +246,15 @@ fn find_pair(s: &str, from: usize, pat: &str) -> Option<usize> {
 }
 
 fn utf8_len(b: u8) -> usize {
-    if b < 0x80 { 1 } else if b < 0xE0 { 2 } else if b < 0xF0 { 3 } else { 4 }
+    if b < 0x80 {
+        1
+    } else if b < 0xE0 {
+        2
+    } else if b < 0xF0 {
+        3
+    } else {
+        4
+    }
 }
 
 fn render(out: &mut impl Write, blocks: &[Block]) -> io::Result<()> {
@@ -260,35 +281,55 @@ fn render(out: &mut impl Write, blocks: &[Block]) -> io::Result<()> {
                 }
             }
             Block::Quote(q) => writeln!(out, "{QUOTE}{ITAL}{}{RST}", inline(q))?,
-            Block::Blank => writeln!(out)?,
         }
     }
     Ok(())
 }
 
+const USAGE: &str = "usage: sifr-md [file.md|-]\n\nRender the documented Markdown subset as ANSI text. Reads stdin when no file is given.\n";
+
 fn main() {
-    let args: Vec<String> = std::env::args().collect();
-    let mut file: Option<String> = None;
-    for a in &args[1..] {
-        if !a.starts_with('-') {
-            file = Some(a.clone());
-            break;
-        }
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.len() == 1 && matches!(args[0].as_str(), "--help" | "-h") {
+        print!("{USAGE}");
+        return;
     }
-    let text = match &file {
-        Some(f) => fs::read_to_string(f).unwrap_or_else(|e| {
-            eprintln!("sifr-md: cannot read {f}: {e}");
+    if args.len() == 1 && matches!(args[0].as_str(), "--version" | "-V") {
+        println!("sifr-md 0.1.0");
+        return;
+    }
+    if args.len() > 1
+        || args
+            .first()
+            .is_some_and(|arg| arg.starts_with('-') && arg != "-")
+    {
+        eprintln!("sifr-md: {USAGE}");
+        std::process::exit(2);
+    }
+    let file = args.first().filter(|arg| arg.as_str() != "-");
+    let text = match file {
+        Some(path) => fs::read_to_string(path).unwrap_or_else(|e| {
+            eprintln!("sifr-md: cannot read {path}: {e}");
             std::process::exit(2);
         }),
         None => {
             let mut s = String::new();
-            io::stdin().read_to_string(&mut s).expect("stdin read failed");
+            io::stdin().read_to_string(&mut s).unwrap_or_else(|e| {
+                eprintln!("sifr-md: stdin read failed: {e}");
+                std::process::exit(2);
+            });
             s
         }
     };
     let blocks = parse_blocks(&text);
     let mut out = io::stdout().lock();
-    render(&mut out, &blocks).expect("stdout write failed");
+    if let Err(error) = render(&mut out, &blocks) {
+        if error.kind() == io::ErrorKind::BrokenPipe {
+            return;
+        }
+        eprintln!("sifr-md: stdout write failed: {error}");
+        std::process::exit(2);
+    }
 }
 
 #[cfg(test)]
@@ -306,7 +347,10 @@ mod tests {
     #[test]
     fn parses_code_fence_verbatim() {
         let b = parse_blocks("```\nlet x = 1;\n  indented\n```\n");
-        assert_eq!(b[0], Block::CodeFence(vec!["let x = 1;".into(), "  indented".into()]));
+        assert_eq!(
+            b[0],
+            Block::CodeFence(vec!["let x = 1;".into(), "  indented".into()])
+        );
     }
 
     #[test]
