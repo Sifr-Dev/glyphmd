@@ -22,13 +22,14 @@ cat README.md | sifr-md
 - lists `-`/`*` and `1.` ordered
 - `**bold**` `*italic*` `` `code` `` `~~strike~~` `[text](url)`
 - fenced code blocks (verbatim), `> blockquote`
-- UTF-8 passthrough
+- UTF-8 passthrough; `\<char>` escapes any character, multibyte included
 
 ## evidence (this machine, 2026-11-17)
 
 ```console
 $ cargo test --release
-test result: ok. 7 passed; 0 failed
+test result: ok. 14 passed; 0 failed   (unit)
+test result: ok. 11 passed; 0 failed   (cli)
 $ ./target/release/sifr-md README.md | head -8   # renders this document
 ```
 
