@@ -3,7 +3,7 @@
 //!   sifr-md [file.md]         (stdin default)
 //! Reads Markdown (CommonMark-ish subset) and writes styled bytes to stdout:
 //!   headings (#..####), **bold**, *italic*, `code`, ``` fences, - lists,
-//!   1. ordered lists, > blockquote, --- hr, [text](url), ~~strike~~
+//!   1. ordered lists, > blockquote, --- hr, \[text\](url), ~~strike~~
 //!
 //! Backslash escapes the next character (any character, including multibyte
 //! UTF-8) and always yields that character literally.
