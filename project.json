@@ -1,0 +1,9 @@
+{
+  "name": "glyphmd",
+  "description": "Markdown processing and conversion tool",
+  "stack": [
+    "cargo"
+  ],
+  "status": "active",
+  "primary_language": "Rust"
+}
