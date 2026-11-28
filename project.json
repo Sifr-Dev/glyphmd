@@ -1,9 +1,13 @@
 {
-  "name": "glyphmd",
-  "description": "Markdown processing and conversion tool",
+  "name": "Sigil",
+  "displayName": "Sigil",
+  "repo": "glyphmd",
+  "description": "Zero-dependency Markdown-to-ANSI terminal renderer for a documented CommonMark subset",
+  "summary": "Renders headings, lists, quotes, fenced code and inline styles to ANSI text with no crates and no regex engine.",
   "stack": [
     "cargo"
   ],
   "status": "active",
-  "primary_language": "Rust"
+  "primary_language": "Rust",
+  "license": "MIT"
 }
